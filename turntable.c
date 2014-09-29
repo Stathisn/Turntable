@@ -88,29 +88,73 @@ int reset_tt(Turntable_t* turntable)
 int calibrate_tt(Turntable_t* turntable)
 {
   // This function must be run immediately after reset to calibrate the encoder readings
-  // Clear the interrupt flags
-  bcm2835_gpio_set_eds(SWITCH);
-  bcm2835_gpio_set_eds(ENCODER);
-  while(!bcm2835_gpio_eds(SWITCH))
+  // Reset max encoder value
+  turntable->maxEncoder = 0;
+  int prev_encoder = bcm2835_gpio_lev(ENCODER);
+  // Start the motor
+  bcm2835_gpio_set(MOTOR);
+  while(bcm2835_gpio_lev(SWITCH))
   {
-    while(!bcm2835_gpio_eds(ENCODER))
+    // Waits for falling edge
+    if(prev_encoder != bcm2835_gpio_lev(ENCODER))
     {
-      // Do nothing
+      prev_encoder = !prev_encoder;
+      turntable->maxEncoder++;
     }
-    turntable->maxEncoder++;
   }
+  while(!bcm2835_gpio_lev(SWITCH))
+  {
+    // waits for rising edge
+    if(prev_encoder != bcm2835_gpio_lev(ENCODER))
+    {
+      prev_encoder = !prev_encoder;
+      turntable->maxEncoder++;
+    }
+  }
+  // reset current encoder to start
+  turntable->currentEncoder = 0;
   return 0;
 }
 
 
 int quarterTurn_tt(Turntable_t* turntable, int direction, int quarters)
 {
+  int target = turntable->currentEncoder + (turntable->maxEncoder/4)*quarters;
+  int prev_encoder = bcm2835_gpio_lev(ENCODER);
+  while(target > turntable->currentEncoder)
+  {
+    if(prev_encoder != bcm2835_gpio_lev(ENCODER))
+    {
+      prev_encoder = !prev_encoder;
+      turntable->currentEncoder++;
+    }
+    if(turntable->currentEncoder > turntable->maxEncoder*3/4 && bcm2835_gpio_lev(SWITCH) = 1)
+    {
+      target = target - turntable->maxEncoder;
+      turntable->currentEncoder = 0;
+    }
+  }
   return 0;
 }
 
 
 int fineTurn_tt(Turntable_t* turntable, int direction, int ticks)
 {
+  int target = turntable->currentEncoder + ticks;
+  int prev_encoder = bcm2835_gpio_lev(ENCODER);
+  while(target > turntable->currentEncoder)
+  {
+    if(prev_encoder != bcm2835_gpio_lev(ENCODER))
+    {
+      prev_encoder = !prev_encoder;
+      turntable->maxEncoder++;
+    }
+    if(turntable->currentEncoder > turntable->maxEncoder*3/4 && bcm2835_gpio_lev(SWITCH) = 1)
+    {
+      target = target - turntable->maxEncoder;
+      turntable->currentEncoder = 0;
+    }
+  }
   return 0;
 }
 
