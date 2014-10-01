@@ -8,7 +8,7 @@
 #define TURNTABLE_H
 
 
-// These commands 
+// These commands
 typedef enum
 {
   reset = 0,
@@ -41,6 +41,8 @@ int reset_tt(Turntable_t* turntable);
 int calibrate_tt(Turntable_t* turntable);
 int quarterTurn_tt(Turntable_t* turntable, int direction, int quarters);
 int fineTurn_tt(Turntable_t* turntable, int direction, int ticks);
+void motorStart(int direction);
+void motorStop();
 
 // JSON parsing functions
 int jsonToTurnInstruction(TurnInstruction_t* instruction, char* text);

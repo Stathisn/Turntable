@@ -12,7 +12,8 @@
 // GPIO pins for turntable control
 #define ENCODER RPI_GPIO_P1_11
 #define SWITCH  RPI_GPIO_P1_13
-#define MOTOR   RPI_GPIO_P1_15
+#define MOTOR_A   RPI_GPIO_P1_18
+#define MOTOR_B   RPI_GPIO_P1_17
 
 
 TurnInstruction_t newTurnInstruction(TurntableCommands_t command, int rotation, int direction)
@@ -30,7 +31,8 @@ int initTurntable(Turntable_t *t)
   if(!bcm2835_init())
     return 1;
   // Set the pin modes
-  bcm2835_gpio_fsel(MOTOR, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(MOTOR_A, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(MOTOR_B, BCM2835_GPIO_FSEL_OUTP);
   bcm2835_gpio_fsel(ENCODER, BCM2835_GPIO_FSEL_INPT);
   bcm2835_gpio_fsel(SWITCH, BCM2835_GPIO_FSEL_INPT);
   // Initialise members
@@ -66,8 +68,7 @@ int parseTurnInstruction(TurnInstruction_t* instruction, Turntable_t* turntable)
 int reset_tt(Turntable_t* turntable)
 {
   // This function returns the turntable to its starting state
-  // Start the motor
-  bcm2835_gpio_set(MOTOR);
+  motorStart(1);
   // Wait for reset
   while(bcm2835_gpio_lev(SWITCH))
   {
@@ -77,8 +78,7 @@ int reset_tt(Turntable_t* turntable)
   {
     // waits for rising edge
   }
-  // Stop the motor
-  bcm2835_gpio_clr(MOTOR);
+  motorStop();
   // Reset the turntable valus
   turntable->maxEncoder = 0;
   turntable->currentEncoder = 0;
@@ -91,8 +91,7 @@ int calibrate_tt(Turntable_t* turntable)
   // Reset max encoder value
   turntable->maxEncoder = 0;
   int prev_encoder = bcm2835_gpio_lev(ENCODER);
-  // Start the motor
-  bcm2835_gpio_set(MOTOR);
+  motorStart(1);
   while(bcm2835_gpio_lev(SWITCH))
   {
     // Waits for falling edge
@@ -111,6 +110,7 @@ int calibrate_tt(Turntable_t* turntable)
       turntable->maxEncoder++;
     }
   }
+  motorStop();
   // reset current encoder to start
   turntable->currentEncoder = 0;
   return 0;
@@ -121,6 +121,7 @@ int quarterTurn_tt(Turntable_t* turntable, int direction, int quarters)
 {
   int target = turntable->currentEncoder + (turntable->maxEncoder/4)*quarters;
   int prev_encoder = bcm2835_gpio_lev(ENCODER);
+  motorStart(direction);
   while(target > turntable->currentEncoder)
   {
     if(prev_encoder != bcm2835_gpio_lev(ENCODER))
@@ -134,6 +135,7 @@ int quarterTurn_tt(Turntable_t* turntable, int direction, int quarters)
       turntable->currentEncoder = 0;
     }
   }
+  motorStop();
   return 0;
 }
 
@@ -142,6 +144,7 @@ int fineTurn_tt(Turntable_t* turntable, int direction, int ticks)
 {
   int target = turntable->currentEncoder + ticks;
   int prev_encoder = bcm2835_gpio_lev(ENCODER);
+  motorStart(direction);
   while(target > turntable->currentEncoder)
   {
     if(prev_encoder != bcm2835_gpio_lev(ENCODER))
@@ -155,6 +158,7 @@ int fineTurn_tt(Turntable_t* turntable, int direction, int ticks)
       turntable->currentEncoder = 0;
     }
   }
+  motorStop();
   return 0;
 }
 
@@ -226,4 +230,22 @@ int jsonToTurnInstruction(TurnInstruction_t* instruction, char* text)
   instruction->direction = json_integer_value(direction);
 
   return 0;
+}
+
+void motorStart(int direction)
+{
+  if(direction)
+  { // Forward
+    bcm2835_gpio_set(MOTOR_A);
+    bcm2835_gpio_clr(MOTOR_B);
+  } else { // Backward
+    bcm2835_gpio_set(MOTOR_B);
+    bcm2835_gpio_clr(MOTOR_A);
+  }
+}
+void motorStop()
+{
+  // Stop motor
+  bcm2835_gpio_set(MOTOR_A);
+  bcm2835_gpio_set(MOTOR_B);
 }
