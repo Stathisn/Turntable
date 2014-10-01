@@ -52,13 +52,14 @@ struct sockaddr_in serv_addr, cli_addr; // structures for storing ip addresses o
 
 int main(int argc, char *argv[])
 {
+  /*
   TurnInstruction_t instruction;
   Turntable_t turntable;
   initTurntable(&turntable);
   reset_tt(&turntable);
-  /*
+  */
   init();
-  loop();*/
+  loop();
   return 0;
 }
 
@@ -87,14 +88,15 @@ void loop()
     // Reply to the message
     n = write(newsockfd,"I got your message",18);
     if (n < 0) error("ERROR writing to socket");
-    close(newsockfd);
-    close(sockfd);
+    //close(newsockfd);
+    //close(sockfd);
     // Interpret command
-    jsonToTurnInstruction(&instruction, buffer);
+    if(jsonToTurnInstruction(&instruction, buffer))
+        printf("unsuccessful json conversion");
     // Execute command
     parseTurnInstruction(&instruction, &turntable);
     // Return to start
-    break;
+    //break;
   }
 }
 
